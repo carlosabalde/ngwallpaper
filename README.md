@@ -24,5 +24,5 @@ Usage
 
 4. Add a new entry to your personal crontab (`crontab -e`) to periodically change your wallpaper.
     ```
-    0 *  * * * python2.7 ~/ngwallpaper/ngwallpaper.py --latest --archive --destination ~/Pictures/ --retries 5
+    0 * * * * /opt/local/bin/python2.7 ~/ngwallpaper/ngwallpaper.py --latest --archive --destination ~/Pictures/ --retries 5
     ```
