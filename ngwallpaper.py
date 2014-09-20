@@ -182,6 +182,7 @@ def download_wallpaper(url, destination):
     assert(ifp.getcode() == 200)
     with open(file, 'wb') as ofd:
         ofd.write(ifp.read())
+    ifp.close()
 
     # Done!
     return file
