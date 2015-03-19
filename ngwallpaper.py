@@ -222,6 +222,7 @@ def main(origins, destination, retries):
             # Store meta data of the selected photo
             with open(os.path.join(destination, FILENAME + '.txt'), 'w') as fd:
                 fd.write(wallpaper['index'] + '\n')
+                fd.write(wallpaper['url'] + '\n')
 
             # Set the downloaded photo as wallpaper.
             set_wallpaper(file)
