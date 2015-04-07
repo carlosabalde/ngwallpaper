@@ -15,10 +15,12 @@ for a detailed description and other useful information.
 from __future__ import absolute_import
 import sys
 import os
+import time
 import subprocess
 import traceback
 import argparse
 import urllib2
+import hashlib
 import re
 import abc
 import random
@@ -117,12 +119,12 @@ class Latest(LeafOrigin):
 
     @property
     def _value_re(self):
-        return '^/wallpaper/\d{4}/'
+        return r'^/wallpaper/\d{4}/'
 
     def _parse_photo_urls(self, contents):
         result = []
         gallery = BeautifulSoup(contents).find('div', {'id': 'gallery'})
-        for item in gallery.findAll('a', {'target': '_blank', 'href': re.compile('^/wallpaper/img/')}):
+        for item in gallery.findAll('a', {'target': '_blank', 'href': re.compile(r'^/wallpaper/img/')}):
             result.append(self._root_url + item['href'])
         return result
 
@@ -141,7 +143,7 @@ class Archive(LeafOrigin):
 
     @property
     def _value_re(self):
-        return '^/wallpaper/\d{4}/.*\.xml$'
+        return r'^/wallpaper/\d{4}/.*\.xml$'
 
     def _parse_photo_urls(self, contents):
         result = []
@@ -171,15 +173,15 @@ class ComposedOrigin(Origin):
         return result
 
 
-def download_wallpaper(url, destination):
-    # Extract extension & set detination file name.
+def download_wallpaper(url, destination, filename):
+    # Extract extension & set destination file name.
     file = os.path.join(
         destination,
-        FILENAME + os.path.splitext(urlparse.urlparse(url).path)[1])
+        filename + os.path.splitext(urlparse.urlparse(url).path)[1])
 
     # Download URL.
     ifp = urllib2.urlopen(url, None, HTTP_TIMEOUT)
-    assert(ifp.getcode() == 200)
+    assert ifp.getcode() == 200
     with open(file, 'wb') as ofd:
         ofd.write(ifp.read())
     ifp.close()
@@ -199,35 +201,40 @@ def script(code):
 
 def set_wallpaper(file):
     # See http://superuser.com/a/689804.
-    assert(script('''
+    assert script('''
         sqlite3 ~/Library/Application\ Support/Dock/desktoppicture.db "update data set value = '%(file)s'"
         killall Dock
     ''' % {
         'file': file,
-    }) == 0)
+    }) == 0
 
 
-def main(origins, destination, retries):
+def main(origins, destination, store, retries):
     # Do not continue if all reties have been exhausted.
     if retries > 0:
         try:
             # Fetch some random photo.
             wallpaper = ComposedOrigin(origins).photo
-            assert(wallpaper is not None)
+            assert wallpaper is not None
+
+            # Calculate destination filename.
+            filename = FILENAME
+            if store:
+                filename += '-' + hashlib.sha256(wallpaper['url']).hexdigest()
 
             # Download selected photo.
-            file = download_wallpaper(wallpaper['url'], destination)
-            assert(file is not None)
+            file = download_wallpaper(wallpaper['url'], destination, filename)
+            assert file is not None
 
             # Store meta data of the selected photo
-            with open(os.path.join(destination, FILENAME + '.txt'), 'w') as fd:
+            with open(os.path.join(destination, filename + '.txt'), 'w') as fd:
                 fd.write(wallpaper['index'] + '\n')
                 fd.write(wallpaper['url'] + '\n')
 
             # Set the downloaded photo as wallpaper.
             set_wallpaper(file)
         except:
-            main(origins, destination, retries - 1)
+            main(origins, destination, store, retries - 1)
     else:
         sys.stderr.write('Failed to set wallpaper!\n')
         traceback.print_exc()
@@ -238,12 +245,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '--latest', dest='origins', required=False,
+        '--use-latest', dest='origins', required=False,
         action='append_const', const=Latest(),
         help='enable "latest" repository')
 
     parser.add_argument(
-        '--archive', dest='origins', required=False,
+        '--use-archive', dest='origins', required=False,
         action='append_const', const=Archive(),
         help='enable "archive" repository')
 
@@ -253,14 +260,25 @@ if __name__ == '__main__':
         help='set location of downloaded wallpapers')
 
     parser.add_argument(
+        '--store', dest='store', required=False,
+        action='store_true',
+        help='if enabled previously downloaded wallpapers are not removed')
+
+    parser.add_argument(
         '--retries', dest='retries', type=int, required=False,
         default=5,
         help='number of retries before failing')
 
+    parser.add_argument(
+        '--window', dest='window', type=int, required=False,
+        default=300,
+        help='fetch the same wallpaper even if the script is executed several times during the time window')
+
     options = parser.parse_args()
 
-    if options.origins and options.retries > 0:
-        main(options.origins, options.destination, options.retries)
+    if options.origins and options.retries > 0 and options.window > 0:
+        random.seed(int(time.time() / options.window))
+        main(options.origins, options.destination, options.store, options.retries)
     else:
         parser.print_help()
         sys.exit(1)

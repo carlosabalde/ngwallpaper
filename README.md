@@ -18,11 +18,13 @@ Usage
 
 3. Manually execute the script for the first time.
     ```
-    $ python2.7 ~/ngwallpaper/ngwallpaper.py --latest --archive --destination ~/Pictures/ --retries 5
+    $ python2.7 ~/ngwallpaper/ngwallpaper.py --use-latest --use-archive --destination ~/Pictures/ngwallpapers/ --store --retries 5 --window 300
     ```
-    This should change the background of your desktop and create a couple of files in `~/Pictures/`: the wallpaper image and a text file containing some information about the image.
+    This should change the background of your desktop and create a couple of files in `~/Pictures/ngwallpapers/`: the wallpaper image and a text file containing some information about the image.
 
 4. Add a new entry to your personal crontab (`crontab -e`) to periodically change your wallpaper.
     ```
-    0 * * * * /opt/local/bin/python2.7 ~/ngwallpaper/ngwallpaper.py --latest --archive --destination ~/Pictures/ --retries 5
+    0 * * * * /opt/local/bin/python2.7 ~/ngwallpaper/ngwallpaper.py --use-latest --use-archive --destination ~/Pictures/ngwallpapers/ --store --retries 5 --window 300
     ```
+
+5. When using the `--store`, previously downloaded wallpapers are not removed. You may want to use the folder containing all those images as a source for your screen saver.
